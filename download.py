@@ -75,11 +75,6 @@ def fixapache():
     dir_path = os.path.dirname(os.path.realpath(__file__))
     apacheconf = BASE + r"\apache\conf\httpd.conf"
     
-    extralines = []
-    extralines.append(f'PHPIniDir "{dir_path}\\{BASE}\\php"')
-    extralines.append(f'LoadModule php7_module "{dir_path}\\{BASE}\\php\\php7apache2_4.dll"')
-    extralines.append("AddType application/x-httpd-php .php")
-    
     lines = []
     with open(apacheconf) as dafile:
         for line in dafile:
@@ -87,16 +82,14 @@ def fixapache():
             if line.startswith("Define SRVROOT "):
                 print("Setting Apache SRVROOT")
                 line = "Define SRVROOT " + dir_path + f"\\{BASE}\\apache"
-            if line in extralines:
-                extralines.remove(line)
-            lines.append(line)
+            if not any(line.startswith(start) for start in ["PHPIniDir ", "LoadModule php7_module ", "AddType application/x-httpd-php "]):
+                lines.append(line)
 
-    if len(extralines) != 0:
-        print("Adding lines for Apache to load PHP")
-        lines.append("")
-        lines.extend(extralines)
-    else:
-        print("Lines for loading PHP are already in Apache conf")
+    print("Adding lines for Apache to load PHP")
+    lines.append("")
+    lines.append(f'PHPIniDir "{dir_path}\\{BASE}\\php"')
+    lines.append(f'LoadModule php7_module "{dir_path}\\{BASE}\\php\\php7apache2_4.dll"')
+    lines.append("AddType application/x-httpd-php .php")
 
     with open(apacheconf, "w") as dafile:
         dafile.write("\n".join(lines))
