@@ -1,20 +1,5 @@
-"""
-mediawikiwindowsnow - simple scripts to download and do the bare minimum to configure MediaWiki, PHP and Apache to run on Windows
-Copyright (C) 2022 James Ravindran
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with this program.  If not, see <https://www.gnu.org/licenses/>.
-"""
+# Copyright (C) 2022 James Ravindran
+# SPDX-License-Identifier: GPL-3.0-or-later
 
 import zipfile
 import os
@@ -35,6 +20,7 @@ MEDIAWIKI_ZIP_FOLDERNAME = "mediawiki-1.38.2"
 
 ###
 
+# https://stackoverflow.com/a/39217788
 def download_file(url, dst_filename):
     Path(dst_filename).parent.mkdir(parents=True, exist_ok=True)
     with requests.get(url, stream=True, headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/103.0.0.0 Safari/537.36"}) as r:
@@ -86,6 +72,7 @@ def fixapache():
                 lines.append(line)
 
     print("Adding lines for Apache to load PHP")
+    lines = "\n".join(lines).rstrip().split("\n")
     lines.append("")
     lines.append(f'PHPIniDir "{dir_path}\\{BASE}\\php"')
     lines.append(f'LoadModule php7_module "{dir_path}\\{BASE}\\php\\php7apache2_4.dll"')
@@ -101,9 +88,7 @@ def fixphp():
     if not os.path.isfile(php_ini_filename):
         os.rename(php_ini_filename+"-production", php_ini_filename)
     
-    replacements = {";extension=fileinfo": "extension=fileinfo",
-                    ";extension=intl": "extension=intl",
-                    ";extension=mbstring": "extension=mbstring"}
+    exts = [";extension=fileinfo", ";extension=intl", ";extension=mbstring", ";extension=pdo_sqlite", ";extension=sqlite3"]
     
     lines = []
     extraline = f"extension_dir = {php_dir}\\ext"
@@ -111,8 +96,8 @@ def fixphp():
     with open(php_ini_filename) as dafile:
         for line in dafile:
             line = line.strip()
-            if line in replacements:
-                line = replacements[line]
+            if line in exts:
+                line = line[1:]
             if extraline == line:
                 extraline = ""
             lines.append(line)
@@ -129,7 +114,9 @@ def fixphp():
     print("Copying dlls for intl extension")
     for filename in glob.glob(php_dir+"\\*.dll"):
         if filename.startswith(php_dir+"\\icu"):
-            shutil.copy(filename, BASE + "\\apache\\bin")
+            shutil.copy(filename, BASE+"\\apache\\bin")
+    
+    shutil.copy(php_dir+"\\libsqlite3.dll", BASE+"\\apache\\bin")
 
 # Apache
 perform_zip_extraction(APACHE_URL, BASE+"\\apache", APACHE_ZIP_FOLDERNAME, "Apache")
